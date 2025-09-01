@@ -1,3 +1,16 @@
+"""
+Analyze camera video files in a folder using YOLO object detection model.
+1. Recursively list all video files in the specified folder.
+2. Convert each video file to a lower resolution for faster processing.
+3. Use YOLO model to detect objects in the video file, skipping frames as specified.
+4. Persist detected objects to a JSON file in the same folder as the video file.
+5. Print detected objects to the console.
+
+Dependencies:
+- ultralytics (YOLOv8): pip install ultralytics
+- ffmpeg: Install ffmpeg on your system (https://ffmpeg.org/download.html)
+"""
+
 import json
 import logging
 import os
