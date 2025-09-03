@@ -42,6 +42,12 @@ Clean up old footage based on detected objects to keep disk space usage low.
 }
 ```
 
+## Performance Evaluation
+System | Frame_skip | Yolo Model | Converted video size | Elapsed time | Correctess
+-------|------------|------------|----------------------|--------------|-----------
+AMD Ryzen 7 5800U | 1 | small | 1280 | 00:09:49   | TODO: define benchmark script 
+
+
 ## Installation
 ```bash
 git clone https://github.com/jorritvm/security_camera_analysis.git
