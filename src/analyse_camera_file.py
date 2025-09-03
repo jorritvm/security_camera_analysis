@@ -17,20 +17,11 @@ import os
 
 from ultralytics import YOLO
 
-from constants import ROOT_CAMERA_FOLDER_PATH, YOLO_MODEL_NAME, YOLO_THRESHOLD, TEMP_FOLDER, CONVERTED_VIDEO_SIZE
-from constants import DETECT_OBJECTS_FILENAME, FRAME_SKIP
+from config import ROOT_CAMERA_FOLDER_PATH, YOLO_MODEL_NAME, YOLO_THRESHOLD, TEMP_FOLDER, CONVERTED_VIDEO_SIZE
+from config import DETECT_OBJECTS_FILENAME, FRAME_SKIP
+from utils import setup_logging, log, Timer
 
-# setup logging
-logging.basicConfig(
-    format='[%(asctime)s] %(message)s',
-    datefmt='%Y-%m-%dT%H:%M:%S',
-    level=logging.INFO
-)
-
-
-def log(s):
-    logging.info(s)
-
+setup_logging()
 
 def main_workflow():
     file_paths = recursively_list_all_video_files_in_folder(ROOT_CAMERA_FOLDER_PATH)
@@ -48,6 +39,7 @@ def main_workflow():
         results[file_path] = detected_objects
         remove_temporary_low_resolution_file(low_resolution_file_path)
 
+    return results
 
 def recursively_list_all_video_files_in_folder(folder_path, extensions=('.mp4', '.avi', '.mov', '.mkv')):
     """Recursively list all video files in a folder with given extensions. Returns a list of file paths."""
@@ -144,4 +136,15 @@ def remove_temporary_low_resolution_file(file_path):
 
 
 if __name__ == '__main__':
-    main_workflow()
+    timer = Timer("Total processing time")
+    timer.start()
+    all_detected_objects = main_workflow()
+    timer.stop()
+    log(timer.elapsed())
+
+    # print file names with 'person' in the detected objects
+    log("Files with detected persons:")
+    for file_path, objects in all_detected_objects.items():
+        file_name = os.path.basename(file_path)
+        if 'person' in objects:
+            log(f"{file_name}: {', '.join(objects)}")
