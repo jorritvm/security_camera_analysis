@@ -4,7 +4,6 @@ The main method must be called with a folder path corresponding to an annual upl
 The script will recurse into all folders and compare the contents to the contents of the detected_objects.json file.
 Missing files will be listed as files to be processed.
 The output is a list of file paths, one per line.
-All configuration is done in the constants.py file.
 """
 import os
 from utils import setup_logging, log
@@ -41,17 +40,17 @@ def convert_list_of_file_paths_to_dict(file_paths):
     return file_dict
 
 
-def filter_file_paths_by_detected_objects(file_dict, detect_objects_filename):
+def filter_unprocessed_file_paths(file_dict, detect_objects_filename):
     """
     Filter the file paths by comparing to the detected_objects.json file in each folder.
-    Returns a list of file paths.
+    Returns a list of file paths containing only files that still need to be processed.
     """
-    files_to_process = []
+    unprocessed_file_paths = []
     for folder_path, file_names in file_dict.items():
         detected_objects_file_path = os.path.join(folder_path, detect_objects_filename)
         if not os.path.exists(detected_objects_file_path):
             for file_name in file_names:
-                files_to_process.append(os.path.join(folder_path, file_name))
+                unprocessed_file_paths.append(os.path.join(folder_path, file_name))
         else:
             with open(detected_objects_file_path, 'r') as f:
                 try:
@@ -59,24 +58,48 @@ def filter_file_paths_by_detected_objects(file_dict, detect_objects_filename):
                     processed_files = set(detected_data.keys())
                     for file_name in file_names:
                         if file_name not in processed_files:
-                            files_to_process.append(os.path.join(folder_path, file_name))
+                            unprocessed_file_paths.append(os.path.join(folder_path, file_name))
                 except json.JSONDecodeError:
                     for file_name in file_names:
-                        files_to_process.append(os.path.join(folder_path, file_name))
-    return files_to_process
+                        unprocessed_file_paths.append(os.path.join(folder_path, file_name))
+    return unprocessed_file_paths
+
+def filter_processed_file_paths(file_dict, detect_objects_filename):
+    """
+    Filter the file paths by comparing to the detected_objects.json file in each folder.
+    Returns a list of file paths containing only files that have already been processed.
+    """
+    processed_file_paths = []
+    for folder_path, file_names in file_dict.items():
+        detected_objects_file_path = os.path.join(folder_path, detect_objects_filename)
+        if os.path.exists(detected_objects_file_path):
+            with open(detected_objects_file_path, 'r') as f:
+                try:
+                    detected_data = json.load(f)
+                    processed_file_names = set(detected_data.keys())
+                    for file_name in file_names:
+                        if file_name in processed_file_names:
+                            processed_file_paths.append(os.path.join(folder_path, file_name))
+                except json.JSONDecodeError:
+                    continue
+    return processed_file_paths
 
 if __name__ == "__main__":
-    """example usage of this module"""
+    # this entrypoint serves as a way of testing the analysis part of the repo
+
     from config import ROOT_CAMERA_FOLDER_PATH, FORCE_REEVALUATION, VIDEO_FILE_EXTENSIONS, DETECT_OBJECTS_FILENAME
 
     log("----------------all files to process----------------")
     all_video_file_paths = recursively_list_all_video_files_in_folder(ROOT_CAMERA_FOLDER_PATH, VIDEO_FILE_EXTENSIONS)
+    all_video_files_as_dict = convert_list_of_file_paths_to_dict(all_video_file_paths)
     log(all_video_file_paths)
 
-    if not FORCE_REEVALUATION:
-       log("----------------filtered files to process----------------")
-       all_video_files_as_dict = convert_list_of_file_paths_to_dict(all_video_file_paths)
-       filtered_files_to_process = filter_file_paths_by_detected_objects(all_video_files_as_dict, DETECT_OBJECTS_FILENAME)
-       log(filtered_files_to_process)
+    log("----------------PROCESSED FILES----------------")
+    processed_file_paths = filter_processed_file_paths(all_video_files_as_dict, DETECT_OBJECTS_FILENAME)
+    log(processed_file_paths)
+
+    log("----------------UNPROCESSED FILES----------------")
+    filtered_files_to_process = filter_unprocessed_file_paths(all_video_files_as_dict, DETECT_OBJECTS_FILENAME)
+    log(filtered_files_to_process)
 
 
