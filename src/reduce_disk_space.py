@@ -44,10 +44,11 @@ def remove_files_without_objects(file_dict, detect_objects_filename, target_obje
 
 
 if __name__ == "__main__":
-    from config import ROOT_CAMERA_FOLDER_PATH, VIDEO_FILE_EXTENSIONS
-    from config import DETECT_OBJECTS_FILENAME, DELETE_DRY_RUN, KEEP_VIDEOS_WITH_OBJECTS
+    from config import VIDEO_FILE_EXTENSIONS
+    from config import DETECT_OBJECTS_FILENAME, KEEP_VIDEOS_WITH_OBJECTS
     from identify_camera_files_to_process import recursively_list_all_video_files_in_folder, convert_list_of_file_paths_to_dict
     log("Starting disk space reduction process (as dry run)...")
-    file_paths = recursively_list_all_video_files_in_folder(ROOT_CAMERA_FOLDER_PATH, VIDEO_FILE_EXTENSIONS)
+    root_camera_folder_path = "" # specify the root folder path here for this test
+    file_paths = recursively_list_all_video_files_in_folder(root_camera_folder_path, VIDEO_FILE_EXTENSIONS)
     file_dict = convert_list_of_file_paths_to_dict(file_paths)
-    remove_files_without_objects(file_dict, DETECT_OBJECTS_FILENAME, KEEP_VIDEOS_WITH_OBJECTS, True)
+    remove_files_without_objects(file_dict, DETECT_OBJECTS_FILENAME, KEEP_VIDEOS_WITH_OBJECTS, dry_run=True)
