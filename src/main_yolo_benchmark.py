@@ -21,21 +21,33 @@ def run_campaign():
                                                             extensions=VIDEO_FILE_EXTENSIONS)
 
     # define different settings to benchmark
-    # change vsize
-    run_single_benchmark(file_paths, 1080, "yolov8s.pt", 1, "bench_1080p_small_f1.json")
-    run_single_benchmark(file_paths, 720, "yolov8s.pt", 1, "bench_720p_small_f1.json")
-    run_single_benchmark(file_paths, 480, "yolov8s.pt", 1, "bench_480p_small_f1.json")
-    # change model
-    run_single_benchmark(file_paths, 1080, "yolov8n.pt", 1, "bench_1080p_nano_f1.json")
-    run_single_benchmark(file_paths, 720, "yolov8n.pt", 1, "bench_720p_nano_f1.json")
-    run_single_benchmark(file_paths, 480, "yolov8n.pt", 1, "bench_480p_nano_f1.json")
-    # change frame skip
-    run_single_benchmark(file_paths, 1080, "yolov8s.pt", 3, "bench_1080p_small_f3.json")
-    run_single_benchmark(file_paths, 1080, "yolov8s.pt", 10, "bench_1080p_small_f10.json")
-    run_single_benchmark(file_paths, 1080, "yolov8s.pt", 30, "bench_1080p_small_f30.json")
-    run_single_benchmark(file_paths, 480, "yolov8s.pt", 3, "bench_480p_small_f3.json")
-    run_single_benchmark(file_paths, 480, "yolov8s.pt", 10, "bench_480p_small_f10.json")
-    run_single_benchmark(file_paths, 480, "yolov8s.pt", 30, "bench_480p_small_f30.json")
+    # --------run 01 - vary all params ------------
+    # # change vsize
+    # run_single_benchmark(file_paths, 1080, "yolov8s.pt", 1, "bench_1080p_small_f1.json")
+    # run_single_benchmark(file_paths, 720, "yolov8s.pt", 1, "bench_720p_small_f1.json")
+    # run_single_benchmark(file_paths, 480, "yolov8s.pt", 1, "bench_480p_small_f1.json")
+    # # change model
+    # run_single_benchmark(file_paths, 1080, "yolov8n.pt", 1, "bench_1080p_nano_f1.json")
+    # run_single_benchmark(file_paths, 720, "yolov8n.pt", 1, "bench_720p_nano_f1.json")
+    # run_single_benchmark(file_paths, 480, "yolov8n.pt", 1, "bench_480p_nano_f1.json")
+    # # change frame skip
+    # run_single_benchmark(file_paths, 1080, "yolov8s.pt", 3, "bench_1080p_small_f3.json")
+    # run_single_benchmark(file_paths, 1080, "yolov8s.pt", 10, "bench_1080p_small_f10.json")
+    # run_single_benchmark(file_paths, 1080, "yolov8s.pt", 30, "bench_1080p_small_f30.json")
+    # run_single_benchmark(file_paths, 480, "yolov8s.pt", 3, "bench_480p_small_f3.json")
+    # run_single_benchmark(file_paths, 480, "yolov8s.pt", 10, "bench_480p_small_f10.json")
+    # run_single_benchmark(file_paths, 480, "yolov8s.pt", 30, "bench_480p_small_f30.json")
+    # --------run 02 - retry frame skip ------------
+    # run_single_benchmark(file_paths, 720, "yolov8s.pt", 3, "bench_720p_small_f3.json")
+    # run_single_benchmark(file_paths, 720, "yolov8s.pt", 10, "bench_720p_small_f10.json")
+    # run_single_benchmark(file_paths, 720, "yolov8s.pt", 30, "bench_7200p_small_f30.json")
+    # --------run 03 - retry frame skip on nano ------------
+    # run_single_benchmark(file_paths, 720, "yolov8n.pt", 3, "bench_720p_nano_f3.json")
+    # run_single_benchmark(file_paths, 720, "yolov8n.pt", 10, "bench_720p_nano_f10.json")
+    # run_single_benchmark(file_paths, 720, "yolov8n.pt", 30, "bench_7200p_nano_f30.json")
+    # run_single_benchmark(file_paths, 480, "yolov8n.pt", 3, "bench_480p_nano_f3.json")
+    # run_single_benchmark(file_paths, 480, "yolov8n.pt", 10, "bench_480p_nano_f10.json")
+    # run_single_benchmark(file_paths, 480, "yolov8n.pt", 30, "bench_480p_nano_f30.json")
 
     print("------------------ benchmark results ------------------")
     # print to console
@@ -64,6 +76,7 @@ def run_single_benchmark(file_paths, vsize, yolo_model, frame_skip, json_filenam
 
     # evaluate the results
     acc, prec, fpr = establish_metrics(all_detected_objects)
+    print(f"accuracy: {acc}, precision: {prec}, false positive rate: {fpr}")
 
     results[json_filename] = (elapsed_seconds, acc, prec, fpr)
 
