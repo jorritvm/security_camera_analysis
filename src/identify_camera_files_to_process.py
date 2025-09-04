@@ -40,11 +40,12 @@ def convert_list_of_file_paths_to_dict(file_paths):
     return file_dict
 
 
-def filter_unprocessed_file_paths(file_dict, detect_objects_filename):
+def filter_unprocessed_file_paths(file_paths, detect_objects_filename):
     """
     Filter the file paths by comparing to the detected_objects.json file in each folder.
     Returns a list of file paths containing only files that still need to be processed.
     """
+    file_dict = convert_list_of_file_paths_to_dict(file_paths)
     unprocessed_file_paths = []
     for folder_path, file_names in file_dict.items():
         detected_objects_file_path = os.path.join(folder_path, detect_objects_filename)
@@ -64,11 +65,12 @@ def filter_unprocessed_file_paths(file_dict, detect_objects_filename):
                         unprocessed_file_paths.append(os.path.join(folder_path, file_name))
     return unprocessed_file_paths
 
-def filter_processed_file_paths(file_dict, detect_objects_filename):
+def filter_processed_file_paths(file_paths, detect_objects_filename):
     """
     Filter the file paths by comparing to the detected_objects.json file in each folder.
     Returns a list of file paths containing only files that have already been processed.
     """
+    file_dict = convert_list_of_file_paths_to_dict(file_paths)
     processed_file_paths = []
     for folder_path, file_names in file_dict.items():
         detected_objects_file_path = os.path.join(folder_path, detect_objects_filename)
@@ -89,17 +91,16 @@ if __name__ == "__main__":
 
     from config import ROOT_CAMERA_FOLDER_PATH, FORCE_REEVALUATION, VIDEO_FILE_EXTENSIONS, DETECT_OBJECTS_FILENAME
 
-    log("----------------all files to process----------------")
+    log("----------------ALL FILES TO PROCESS----------------")
     all_video_file_paths = recursively_list_all_video_files_in_folder(ROOT_CAMERA_FOLDER_PATH, VIDEO_FILE_EXTENSIONS)
-    all_video_files_as_dict = convert_list_of_file_paths_to_dict(all_video_file_paths)
     log(all_video_file_paths)
 
     log("----------------PROCESSED FILES----------------")
-    processed_file_paths = filter_processed_file_paths(all_video_files_as_dict, DETECT_OBJECTS_FILENAME)
+    processed_file_paths = filter_processed_file_paths(all_video_file_paths, DETECT_OBJECTS_FILENAME)
     log(processed_file_paths)
 
     log("----------------UNPROCESSED FILES----------------")
-    filtered_files_to_process = filter_unprocessed_file_paths(all_video_files_as_dict, DETECT_OBJECTS_FILENAME)
+    filtered_files_to_process = filter_unprocessed_file_paths(all_video_file_paths, DETECT_OBJECTS_FILENAME)
     log(filtered_files_to_process)
 
 

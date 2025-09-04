@@ -3,8 +3,9 @@ Analyze camera video files in a folder using YOLO object detection model.
 1. Recursively list all video files in the specified folder.
 2. Convert each video file to a lower resolution for faster processing.
 3. Use YOLO model to detect objects in the video file, skipping frames as specified.
-4. Persist detected objects to a JSON file in the same folder as the video file.
-5. Print detected objects to the console.
+4. Save the best frame with a detected person as a still image (if enabled).
+5. Persist detected objects to a JSON file in the same folder as the video file.
+6. Print detected objects to the console.
 
 Dependencies:
 - ultralytics (YOLOv8): pip install ultralytics
@@ -22,7 +23,7 @@ setup_logging()
 
 
 def detect_objects_in_video_files(file_paths: list[str], ffmpeg_temp_folder_path, converted_video_vsize, yolo_model_name,
-                                  yolo_threshold, frame_skip, detect_objects_filename):
+                                  yolo_threshold, frame_skip, detect_objects_filename, save_stills: bool):
     """
     Detect objects in video files using YOLO model.
     Returns a dictionary with file paths as keys and sets of detected objects as values.
@@ -33,20 +34,23 @@ def detect_objects_in_video_files(file_paths: list[str], ffmpeg_temp_folder_path
     results = dict()
     for file_path in file_paths:
         objects = detect_objects_in_video_file(file_path, ffmpeg_temp_folder_path, converted_video_vsize, frame_skip,
-                                               yolo_model, yolo_threshold, detect_objects_filename)
+                                               yolo_model, yolo_threshold, detect_objects_filename, save_stills)
         results[file_path] = objects
 
     return results
 
 
 def detect_objects_in_video_file(file_path, ffmpeg_temp_folder_path, converted_video_vsize, frame_skip, yolo_model,
-                                 yolo_threshold, detect_objects_filename):
+                                 yolo_threshold, detect_objects_filename, save_stills):
     file_name = os.path.basename(file_path)
     log(f"Processing file: {file_name}")
     low_resolution_file_path = convert_video_file_to_lower_resolution(file_path, ffmpeg_temp_folder_path,
                                                                       converted_video_vsize)
+    save_stills_dir = None
+    if save_stills:
+        save_stills_dir = os.path.dirname(file_path)
     detected_objects = perform_video_file_analysis(low_resolution_file_path, yolo_model, frame_skip,
-                                                   yolo_threshold)
+                                                   yolo_threshold, save_stills_dir)
     persist_detected_objects(file_path, detected_objects, detect_objects_filename)
     print_detected_objects(detected_objects)
     remove_temporary_low_resolution_file(low_resolution_file_path)
@@ -85,7 +89,7 @@ def create_yolo_model(model_name):
     return model
 
 
-def perform_video_file_analysis(video_file_path, model, frame_skip, threshold):
+def perform_video_file_analysis(video_file_path, model, frame_skip, threshold, save_stills_dir=None):
     """Detect objects in a video file using YOLO model. Returns a set of detected object class names."""
     log(f"Starting object detection for file {os.path.basename(video_file_path)}")
 
@@ -94,6 +98,10 @@ def perform_video_file_analysis(video_file_path, model, frame_skip, threshold):
 
     detected_objects = set()
     frame_idx = 0
+
+    best_person_conf = 0.0
+    best_person_frame = None
+    best_person_box = None
 
     while True:
         ret, frame = cap.read()
@@ -105,12 +113,29 @@ def perform_video_file_analysis(video_file_path, model, frame_skip, threshold):
             for box in results[0].boxes:
                 cls = model.names[int(box.cls)]
                 conf = float(box.conf)
+
                 if conf >= threshold:
                     detected_objects.add(cls)
+
+                    # Track best person detection
+                    if cls == "person" and conf > best_person_conf:
+                        best_person_conf = conf
+                        best_person_frame = frame.copy()  # keep a copy of the frame
+                        best_person_box = box.xyxy[0].cpu().numpy()  # (x1, y1, x2, y2)
 
         frame_idx += 1
 
     cap.release()
+
+    # Save the best person frame with bounding box
+    if best_person_frame is not None and best_person_box is not None and save_stills_dir is not None:
+        os.makedirs(save_stills_dir, exist_ok=True)
+        x1, y1, x2, y2 = best_person_box.astype(int)
+        cv2.rectangle(best_person_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # green box
+        save_path = os.path.join(save_stills_dir, f"{os.path.basename(video_file_path)}_boxed.jpg")
+        cv2.imwrite(save_path, best_person_frame)
+        log(f"Saved best person detection frame to {save_path}")
+
     return detected_objects
 
 
@@ -165,7 +190,7 @@ if __name__ == '__main__':
     timer = Timer("Total processing time")
     timer.start()
     all_detected_objects = detect_objects_in_video_files(file_paths, TEMP_FOLDER, CONVERTED_VIDEO_SIZE, YOLO_MODEL_NAME,
-                                                         YOLO_THRESHOLD, FRAME_SKIP, DETECT_OBJECTS_FILENAME)
+                                                         YOLO_THRESHOLD, FRAME_SKIP, DETECT_OBJECTS_FILENAME, True)
     timer.stop()
     log(timer.elapsed())
 
