@@ -42,6 +42,7 @@ def detect_objects_in_video_files(file_paths: list[str], ffmpeg_temp_folder_path
 
 def detect_objects_in_video_file(file_path, ffmpeg_temp_folder_path, converted_video_vsize, frame_skip, yolo_model,
                                  yolo_threshold, detect_objects_filename, save_stills):
+    """Returns a set of detected object class names."""
     file_name = os.path.basename(file_path)
     log(f"Processing file: {file_name}")
     low_resolution_file_path = convert_video_file_to_lower_resolution(file_path, ffmpeg_temp_folder_path,
