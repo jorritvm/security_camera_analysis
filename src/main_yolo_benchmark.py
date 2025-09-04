@@ -48,6 +48,9 @@ def run_campaign():
     # run_single_benchmark(file_paths, 480, "yolov8n.pt", 3, "bench_480p_nano_f3.json")
     # run_single_benchmark(file_paths, 480, "yolov8n.pt", 10, "bench_480p_nano_f10.json")
     # run_single_benchmark(file_paths, 480, "yolov8n.pt", 30, "bench_480p_nano_f30.json")
+    # -------run 04 - try on ryzen 5700x -------------------
+    run_single_benchmark(file_paths, 480, "yolov8n.pt", 10, "bench_480p_nano_f10_5700x.json")
+
 
     print("------------------ benchmark results ------------------")
     # print to console
@@ -69,7 +72,7 @@ def run_single_benchmark(file_paths, vsize, yolo_model, frame_skip, json_filenam
     timer = Timer("Total processing time")
     timer.start()
     all_detected_objects = detect_objects_in_video_files(file_paths , TEMP_FOLDER, vsize, yolo_model,
-                                                         YOLO_THRESHOLD, frame_skip, json_filename)
+                                                         YOLO_THRESHOLD, frame_skip, json_filename, True)
     timer.stop()
     elapsed_seconds = timer.end_time - timer.start_time
     print("elapsed seconds: " + str(elapsed_seconds))

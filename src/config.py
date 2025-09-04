@@ -1,4 +1,4 @@
-ROOT_CAMERA_FOLDER_PATH = "../data/demo_clips"
+ROOT_CAMERA_FOLDER_PATH = r"T:\ftp_reolink\reolink\2025"
 FORCE_REEVALUATION = False # if True, will re-evaluate all video files even if detected_objects.json already exists
 VIDEO_FILE_EXTENSIONS = ('.mp4', '.avi', '.mov', '.mkv') # video file extensions to consider
 TEMP_FOLDER = "../data/temp" # location to store intermediate working video files
@@ -8,5 +8,5 @@ YOLO_THRESHOLD = 0.3 # 0.2-0.3 for caputuring all predictions, 0.4-0.5 for gener
 FRAME_SKIP = 10 # amount of frames per single evaluation
 SAVE_STILLS = True
 DETECT_OBJECTS_FILENAME="detected_objects.json"
-DELETE_DRY_RUN = True # if True, will only log files that would be deleted, but not actually delete them
+DELETE_DRY_RUN = False # if True, will only log files that would be deleted, but not actually delete them
 KEEP_VIDEOS_WITH_OBJECTS = {"person"} # define as a set

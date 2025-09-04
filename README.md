@@ -111,6 +111,7 @@ During benchmarking the following metrics were evaluated:
  R7 5800U | 3          | nano       | 480   | 200              | 1.00     | 1.00      | 0.00 
  R7 5800U | 10         | nano       | 480   | 116              | 1.00     | 1.00      | 0.00 
  R7 5800U | 30         | nano       | 480   | 94               | 1.00     | 1.00      | 0.00 
+ R7 5700X | 10         | nano       | 480   | 75               | 1.00     | 1.00      | 0.00 
  
 
 Conclusion:
@@ -118,6 +119,7 @@ Conclusion:
 - lower resolutions still yield good results
 - frame skipping can go up to 10-30 without losing accuracy
 - with all optimizations in place, ffmpeg conversion begins to take a more dominant role in total processing time
+- 5700X is 35% faster than 5800U for same settings.
 
 ## Future work
 - Remove the jpg uploaded by reolink if this seems advantageous.
