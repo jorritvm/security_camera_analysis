@@ -18,6 +18,35 @@ Clean up old footage based on detected objects to keep disk space usage low.
 - reduce_disk_space.py: deletes old images based on retention policy and detected objects
 - utils.py: utility functions
 
+### Architecture drawing
+
+```mermaid
+flowchart TB
+    config
+    
+    subgraph entrypoints
+        main_benchmark
+        main_production
+    end
+
+    direction LR
+    subgraph core
+        identify_files 
+        analyse_files
+        reduce_space
+        
+        utils
+    end
+
+    config --> entrypoints
+    main_benchmark --> analyse_files
+    main_production --> core
+
+    identify_files --> analyse_files
+    analyse_files --> reduce_space
+```
+
+
 ## Example of JSON output from object detection
 
 ```json
@@ -90,6 +119,11 @@ Conclusion:
 - frame skipping can go up to 10-30 without losing accuracy
 - with all optimizations in place, ffmpeg conversion begins to take a more dominant role in total processing time
 
+## Future work
+- Remove the jpg uploaded by reolink if this seems advantageous.
+- Experiment with higher threshold if space savings are not sufficient.
+
+
 ## Installation
 
 ```bash
@@ -100,7 +134,6 @@ source .venv/bin/activate
 ```
 
 ## Author
-
 Jorrit Vander Mynsbrugge 
 
 
