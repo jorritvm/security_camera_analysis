@@ -14,6 +14,7 @@ Dependencies:
 import json
 import os
 
+import cv2
 from ultralytics import YOLO
 from utils import setup_logging, log, Timer
 
@@ -31,18 +32,25 @@ def detect_objects_in_video_files(file_paths: list[str], ffmpeg_temp_folder_path
     log("Processing all video files in folder...")
     results = dict()
     for file_path in file_paths:
-        file_name = os.path.basename(file_path)
-        log(f"Processing file: {file_name}")
-        low_resolution_file_path = convert_video_file_to_lower_resolution(file_path, ffmpeg_temp_folder_path,
-                                                                          converted_video_vsize)
-        detected_objects = detect_objects_in_video_file(low_resolution_file_path, yolo_model, frame_skip,
-                                                        yolo_threshold)
-        persist_detected_objects(file_path, detected_objects, detect_objects_filename)
-        print_detected_objects(detected_objects)
-        results[file_path] = detected_objects
-        remove_temporary_low_resolution_file(low_resolution_file_path)
+        objects = detect_objects_in_video_file(file_path, ffmpeg_temp_folder_path, converted_video_vsize, frame_skip,
+                                               yolo_model, yolo_threshold, detect_objects_filename)
+        results[file_path] = objects
 
     return results
+
+
+def detect_objects_in_video_file(file_path, ffmpeg_temp_folder_path, converted_video_vsize, frame_skip, yolo_model,
+                                 yolo_threshold, detect_objects_filename):
+    file_name = os.path.basename(file_path)
+    log(f"Processing file: {file_name}")
+    low_resolution_file_path = convert_video_file_to_lower_resolution(file_path, ffmpeg_temp_folder_path,
+                                                                      converted_video_vsize)
+    detected_objects = perform_video_file_analysis(low_resolution_file_path, yolo_model, frame_skip,
+                                                   yolo_threshold)
+    persist_detected_objects(file_path, detected_objects, detect_objects_filename)
+    print_detected_objects(detected_objects)
+    remove_temporary_low_resolution_file(low_resolution_file_path)
+    return detected_objects
 
 
 def convert_video_file_to_lower_resolution(input_file_path, output_folder_path, converted_video_vsize):
@@ -77,19 +85,32 @@ def create_yolo_model(model_name):
     return model
 
 
-def detect_objects_in_video_file(video_file_path, model, frame_skip, threshold):
+def perform_video_file_analysis(video_file_path, model, frame_skip, threshold):
     """Detect objects in a video file using YOLO model. Returns a set of detected object class names."""
     log(f"Starting object detection for file {os.path.basename(video_file_path)}")
-    results = model(video_file_path, stream=True, verbose=False)
+
+    # using cv2 we're building a subset of frames to pass to the model
+    cap = cv2.VideoCapture(video_file_path)
 
     detected_objects = set()
-    for i, frame in enumerate(results):
-        if i % frame_skip == 0:
-            for box in frame.boxes:
+    frame_idx = 0
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        if frame_idx % frame_skip == 0:
+            results = model(frame, verbose=False)
+            for box in results[0].boxes:
                 cls = model.names[int(box.cls)]
                 conf = float(box.conf)
                 if conf >= threshold:
                     detected_objects.add(cls)
+
+        frame_idx += 1
+
+    cap.release()
     return detected_objects
 
 
