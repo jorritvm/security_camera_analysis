@@ -121,6 +121,26 @@ Conclusion:
 - with all optimizations in place, ffmpeg conversion begins to take a more dominant role in total processing time
 - 5700X is 35% faster than 5800U for same settings.
 
+## Production output
+Running the production entrypoint will provide output to stdout as well as write the detect_objects.json files and the boxed jpg images.  
+Example output:
+```
+[2025-09-04T22:27:00] Listing all video files in folder: T:\ftp_reolink\reolink\2025
+[2025-09-04T22:27:01] Found 46478 video files in total
+[2025-09-04T22:27:01] After filtering, 43603 files remain to be processed
+[2025-09-04T22:27:01] Creating YOLO model: yolov8n.pt
+[2025-09-04T22:27:01] Processing file: Camera-1_00_20250118123855.mp4
+[2025-09-04T22:27:01] Converting video file to lower resolution: T:\ftp_reolink\reolink\2025\01\18\Camera-1_00_20250118123855.mp4 → ../data/temp\Camera-1_00_20250118123855.mp4
+[2025-09-04T22:27:05] Starting object detection for file Camera-1_00_20250118123855.mp4
+[2025-09-04T22:27:07] Persisting detected objects to file: T:\ftp_reolink\reolink\2025\01\18\detected_objects.json
+[2025-09-04T22:27:07] Objects detected: car
+[2025-09-04T22:27:07] Removed temporary file: C:\devcopy\security_camera_analysis\data\temp\Camera-1_00_20250118123855.mp4
+[2025-09-04T22:27:07] Evaluating whether to remove file: T:\ftp_reolink\reolink\2025\01\18\Camera-1_00_20250118123855.mp4
+[2025-09-04T22:27:07] Removed file: T:\ftp_reolink\reolink\2025\01\18\Camera-1_00_20250118123855.mp4
+[2025-09-04T22:27:07] Processing file: Camera-1_00_20250118123928.mp4
+```
+
+
 ## Future work
 - Remove the jpg uploaded by reolink if this seems advantageous.
 - Experiment with higher threshold if space savings are not sufficient.
