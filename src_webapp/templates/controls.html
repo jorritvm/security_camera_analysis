@@ -1,0 +1,85 @@
+<form method="get" class="row g-2 align-items-end mb-3">
+
+  <!-- Keep current page to 1 on changes (handled by not including page input) -->
+
+  <div class="col-12 col-md-4">
+    <label for="date" class="form-label mb-0">Select date</label>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary"
+         href="{{ url_for('gallery',
+                          date=prev_date,
+                          per_page=per_page,
+                          filter=img_filter) }}">&laquo;</a>
+
+      <input type="date" class="form-control" id="date" name="date" value="{{ date_str }}">
+
+      <a class="btn btn-outline-secondary"
+         href="{{ url_for('gallery',
+                          date=next_date,
+                          per_page=per_page,
+                          filter=img_filter) }}">&raquo;</a>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <label for="per_page" class="form-label mb-0">Per page</label>
+    <select class="form-select" id="per_page" name="per_page">
+      {% for opt in allowed_per_page %}
+        <option value="{{ opt }}" {% if per_page == opt %}selected{% endif %}>{{ opt }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <span class="form-label d-block mb-1">Filter</span>
+    <div class="btn-group" role="group" aria-label="Filter">
+      <input type="radio" class="btn-check" name="filter" id="filter_boxed" value="boxed"
+             {% if img_filter != 'all' %}checked{% endif %}>
+      <label class="btn btn-outline-primary" for="filter_boxed">Boxed only</label>
+
+      <input type="radio" class="btn-check" name="filter" id="filter_all" value="all"
+             {% if img_filter == 'all' %}checked{% endif %}>
+      <label class="btn btn-outline-primary" for="filter_all">All JPGs</label>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-2 d-grid">
+    <button type="submit" class="btn btn-primary">Apply</button>
+  </div>
+
+  <!-- Note: page resets to 1 when you hit Apply because we don't include 'page' in this form -->
+</form>
+
+{% if total is not none %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="text-muted small">Total images: {{ total }}</div>
+
+    {% if total_pages > 1 %}
+      <nav aria-label="Pagination">
+        <ul class="pagination mb-0">
+          <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+            <a class="page-link"
+               href="{{ url_for('gallery',
+                                date=date_str,
+                                per_page=per_page,
+                                filter=img_filter,
+                                page=page-1) }}">Previous</a>
+          </li>
+
+          <li class="page-item disabled">
+            <span class="page-link">Page {{ page }} / {{ total_pages }}</span>
+          </li>
+
+          <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+            <a class="page-link"
+               href="{{ url_for('gallery',
+                                date=date_str,
+                                per_page=per_page,
+                                filter=img_filter,
+                                page=page+1) }}">Next</a>
+          </li>
+        </ul>
+      </nav>
+    {% endif %}
+  </div>
+{% endif %}

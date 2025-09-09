@@ -1,0 +1,11 @@
+/* Ensure images scale to the viewer width without altering the file itself */
+.scaled-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Tidy up the page spacing */
+.gallery-list .card {
+  border-radius: 1rem;
+}
