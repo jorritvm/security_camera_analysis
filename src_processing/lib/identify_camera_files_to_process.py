@@ -6,10 +6,10 @@ Missing files will be listed as files to be processed.
 The output is a list of file paths, one per line.
 """
 import os
-from lib.utils import setup_logging, log
+from lib.utils import log
 import json
 
-setup_logging()
+# setup_logging()
 
 def recursively_list_all_video_files_in_folder(folder_path, extensions):
     """

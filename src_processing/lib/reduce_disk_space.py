@@ -4,9 +4,9 @@ This module reduces disk space by removing files that did not have certain objec
 
 import os
 import json
-from lib.utils import setup_logging, log
+from lib.utils import log
 
-setup_logging()
+# setup_logging()
 
 
 def remove_file_without_objects(file_path, detected_objects, target_objects, dry_run):

@@ -17,9 +17,9 @@ import os
 
 import cv2
 from ultralytics import YOLO
-from lib.utils import setup_logging, log, Timer
+from lib.utils import log, Timer
 
-setup_logging()
+# setup_logging()
 
 
 def detect_objects_in_video_files(file_paths: list[str], ffmpeg_temp_folder_path, converted_video_vsize, yolo_model_name,

@@ -16,10 +16,8 @@ from config import (
 )
 from lib.identify_camera_files_to_process import recursively_list_all_video_files_in_folder, filter_unprocessed_file_paths
 from lib.analyse_camera_file import create_yolo_model, detect_objects_in_video_file
-from lib.utils import setup_logging, log
+from lib.utils import setup_root_logger, log
 import json
-
-setup_logging()
 
 
 def get_folder_from_file_path(file_path):
@@ -323,5 +321,14 @@ def run_daily_workflow():
     log("=" * 80)
 
 if __name__ == "__main__":
+    setup_root_logger(
+        with_logfile=True,
+        log_folder_path="../logs/",
+        log_file_name="daily_workflow.log",
+        timestamp_log_file=True
+    )
     run_daily_workflow()
+
+
+
 
