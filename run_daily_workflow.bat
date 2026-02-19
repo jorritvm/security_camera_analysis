@@ -10,7 +10,7 @@ cd src_processing
 echo Working directory: %CD%
 
 REM Activate UV virtual environment and run the workflow
-uv run --directory .. python main_daily_workflow.py
+..\.venv\Scripts\python.exe main_daily_workflow.py
 
 echo.
 echo Workflow completed at %date% %time%
