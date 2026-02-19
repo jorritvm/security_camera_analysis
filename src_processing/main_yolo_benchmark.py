@@ -3,11 +3,10 @@ Entrypoint module to benchmark YOLO model performance so we can define the prope
 The resulting optimized constants will be set up in config.py
 """
 import os
-from identify_camera_files_to_process import recursively_list_all_video_files_in_folder, convert_list_of_file_paths_to_dict
-from analyse_camera_file import detect_objects_in_video_files
-from config import VIDEO_FILE_EXTENSIONS, TEMP_FOLDER, YOLO_MODEL_NAME, YOLO_THRESHOLD
-from utils import Timer
-
+from lib.identify_camera_files_to_process import recursively_list_all_video_files_in_folder
+from lib.analyse_camera_file import detect_objects_in_video_files
+from lib.utils import Timer
+from config import VIDEO_FILE_EXTENSIONS, TEMP_FOLDER, YOLO_THRESHOLD
 
 results = dict() # key = (json_filename), value = (elapsed_seconds, acc, prec, fpr)
 
@@ -23,33 +22,33 @@ def run_campaign():
     # define different settings to benchmark
     # --------run 01 - vary all params ------------
     # # change vsize
-    # run_single_benchmark(file_paths, 1080, "yolov8s.pt", 1, "bench_1080p_small_f1.json")
-    # run_single_benchmark(file_paths, 720, "yolov8s.pt", 1, "bench_720p_small_f1.json")
-    # run_single_benchmark(file_paths, 480, "yolov8s.pt", 1, "bench_480p_small_f1.json")
+    # run_single_benchmark(file_paths, 1080, "models/yolov8s.pt", 1, "bench_1080p_small_f1.json")
+    # run_single_benchmark(file_paths, 720, "models/yolov8s.pt", 1, "bench_720p_small_f1.json")
+    # run_single_benchmark(file_paths, 480, "models/yolov8s.pt", 1, "bench_480p_small_f1.json")
     # # change model
-    # run_single_benchmark(file_paths, 1080, "yolov8n.pt", 1, "bench_1080p_nano_f1.json")
-    # run_single_benchmark(file_paths, 720, "yolov8n.pt", 1, "bench_720p_nano_f1.json")
-    # run_single_benchmark(file_paths, 480, "yolov8n.pt", 1, "bench_480p_nano_f1.json")
+    # run_single_benchmark(file_paths, 1080, "models/yolov8n.pt", 1, "bench_1080p_nano_f1.json")
+    # run_single_benchmark(file_paths, 720, "models/yolov8n.pt", 1, "bench_720p_nano_f1.json")
+    # run_single_benchmark(file_paths, 480, "models/yolov8n.pt", 1, "bench_480p_nano_f1.json")
     # # change frame skip
-    # run_single_benchmark(file_paths, 1080, "yolov8s.pt", 3, "bench_1080p_small_f3.json")
-    # run_single_benchmark(file_paths, 1080, "yolov8s.pt", 10, "bench_1080p_small_f10.json")
-    # run_single_benchmark(file_paths, 1080, "yolov8s.pt", 30, "bench_1080p_small_f30.json")
-    # run_single_benchmark(file_paths, 480, "yolov8s.pt", 3, "bench_480p_small_f3.json")
-    # run_single_benchmark(file_paths, 480, "yolov8s.pt", 10, "bench_480p_small_f10.json")
-    # run_single_benchmark(file_paths, 480, "yolov8s.pt", 30, "bench_480p_small_f30.json")
+    # run_single_benchmark(file_paths, 1080, "models/yolov8s.pt", 3, "bench_1080p_small_f3.json")
+    # run_single_benchmark(file_paths, 1080, "models/yolov8s.pt", 10, "bench_1080p_small_f10.json")
+    # run_single_benchmark(file_paths, 1080, "models/yolov8s.pt", 30, "bench_1080p_small_f30.json")
+    # run_single_benchmark(file_paths, 480, "models/yolov8s.pt", 3, "bench_480p_small_f3.json")
+    # run_single_benchmark(file_paths, 480, "models/yolov8s.pt", 10, "bench_480p_small_f10.json")
+    # run_single_benchmark(file_paths, 480, "models/yolov8s.pt", 30, "bench_480p_small_f30.json")
     # --------run 02 - retry frame skip ------------
-    # run_single_benchmark(file_paths, 720, "yolov8s.pt", 3, "bench_720p_small_f3.json")
-    # run_single_benchmark(file_paths, 720, "yolov8s.pt", 10, "bench_720p_small_f10.json")
-    # run_single_benchmark(file_paths, 720, "yolov8s.pt", 30, "bench_7200p_small_f30.json")
+    # run_single_benchmark(file_paths, 720, "models/yolov8s.pt", 3, "bench_720p_small_f3.json")
+    # run_single_benchmark(file_paths, 720, "models/yolov8s.pt", 10, "bench_720p_small_f10.json")
+    # run_single_benchmark(file_paths, 720, "models/yolov8s.pt", 30, "bench_7200p_small_f30.json")
     # --------run 03 - retry frame skip on nano ------------
-    # run_single_benchmark(file_paths, 720, "yolov8n.pt", 3, "bench_720p_nano_f3.json")
-    # run_single_benchmark(file_paths, 720, "yolov8n.pt", 10, "bench_720p_nano_f10.json")
-    # run_single_benchmark(file_paths, 720, "yolov8n.pt", 30, "bench_7200p_nano_f30.json")
-    # run_single_benchmark(file_paths, 480, "yolov8n.pt", 3, "bench_480p_nano_f3.json")
-    # run_single_benchmark(file_paths, 480, "yolov8n.pt", 10, "bench_480p_nano_f10.json")
-    # run_single_benchmark(file_paths, 480, "yolov8n.pt", 30, "bench_480p_nano_f30.json")
+    # run_single_benchmark(file_paths, 720, "models/yolov8n.pt", 3, "bench_720p_nano_f3.json")
+    # run_single_benchmark(file_paths, 720, "models/yolov8n.pt", 10, "bench_720p_nano_f10.json")
+    # run_single_benchmark(file_paths, 720, "models/yolov8n.pt", 30, "bench_7200p_nano_f30.json")
+    # run_single_benchmark(file_paths, 480, "models/yolov8n.pt", 3, "bench_480p_nano_f3.json")
+    # run_single_benchmark(file_paths, 480, "models/yolov8n.pt", 10, "bench_480p_nano_f10.json")
+    # run_single_benchmark(file_paths, 480, "models/yolov8n.pt", 30, "bench_480p_nano_f30.json")
     # -------run 04 - try on ryzen 5700x -------------------
-    run_single_benchmark(file_paths, 480, "yolov8n.pt", 10, "bench_480p_nano_f10_5700x.json")
+    run_single_benchmark(file_paths, 480, "models/yolov8n.pt", 10, "bench_480p_nano_f10_5700x.json")
 
 
     print("------------------ benchmark results ------------------")

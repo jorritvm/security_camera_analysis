@@ -6,7 +6,7 @@ Missing files will be listed as files to be processed.
 The output is a list of file paths, one per line.
 """
 import os
-from utils import setup_logging, log
+from lib.utils import setup_logging, log
 import json
 
 setup_logging()

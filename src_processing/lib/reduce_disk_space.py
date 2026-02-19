@@ -4,7 +4,7 @@ This module reduces disk space by removing files that did not have certain objec
 
 import os
 import json
-from utils import setup_logging, log
+from lib.utils import setup_logging, log
 
 setup_logging()
 
@@ -76,7 +76,7 @@ def remove_files_without_objects(file_paths, detect_objects_filename, target_obj
 if __name__ == "__main__":
     from config import VIDEO_FILE_EXTENSIONS
     from config import DETECT_OBJECTS_FILENAME, KEEP_VIDEOS_WITH_OBJECTS
-    from identify_camera_files_to_process import recursively_list_all_video_files_in_folder, convert_list_of_file_paths_to_dict
+    from lib.identify_camera_files_to_process import recursively_list_all_video_files_in_folder, convert_list_of_file_paths_to_dict
     log("Starting disk space reduction process (as dry run)...")
     root_camera_folder_path = r"T:\ftp_reolink\reolink\2025" # specify the root folder path here for this test
     file_paths = recursively_list_all_video_files_in_folder(root_camera_folder_path, VIDEO_FILE_EXTENSIONS)

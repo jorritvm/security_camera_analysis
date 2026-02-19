@@ -17,7 +17,7 @@ import os
 
 import cv2
 from ultralytics import YOLO
-from utils import setup_logging, log, Timer
+from lib.utils import setup_logging, log, Timer
 
 setup_logging()
 

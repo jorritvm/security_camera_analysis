@@ -8,10 +8,10 @@ The workflow will try to process file by file, instead of first analysing all fi
 from config import ROOT_CAMERA_FOLDER_PATH, FORCE_REEVALUATION, VIDEO_FILE_EXTENSIONS, DETECT_OBJECTS_FILENAME, \
     YOLO_MODEL_NAME, FRAME_SKIP, YOLO_THRESHOLD, TEMP_FOLDER, CONVERTED_VIDEO_SIZE, SAVE_STILLS, KEEP_VIDEOS_WITH_OBJECTS, DELETE_DRY_RUN
 
-from identify_camera_files_to_process import recursively_list_all_video_files_in_folder, filter_unprocessed_file_paths
-from analyse_camera_file import create_yolo_model, detect_objects_in_video_file
-from reduce_disk_space import remove_file_without_objects
-from utils import setup_logging, log
+from lib.identify_camera_files_to_process import recursively_list_all_video_files_in_folder, filter_unprocessed_file_paths
+from lib.analyse_camera_file import create_yolo_model, detect_objects_in_video_file
+from lib.reduce_disk_space import remove_file_without_objects
+from lib.utils import setup_logging, log
 
 setup_logging()
 
