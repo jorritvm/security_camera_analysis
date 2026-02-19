@@ -6,11 +6,13 @@ This is designed to run daily as a batch job.
 """
 
 import os
+import re
+import shutil
 from config import (
     ROOT_CAMERA_FOLDER_PATH, FORCE_REEVALUATION, VIDEO_FILE_EXTENSIONS, DETECT_OBJECTS_FILENAME,
     YOLO_MODEL_NAME, FRAME_SKIP, YOLO_THRESHOLD, TEMP_FOLDER, CONVERTED_VIDEO_SIZE,
     SAVE_STILLS, KEEP_VIDEOS_WITH_OBJECTS, DELETE_DRY_RUN,
-    RECENT_FILES_MAX_SIZE_GB, HISTORICAL_FILES_MAX_SIZE_GB, FREE_SPACE_BUFFER_GB
+    RECENT_FILES_MAX_SIZE_GB, HISTORICAL_FILES_MAX_SIZE_GB, FREE_SPACE_BUFFER_GB, FOLDER_SIZE_FILENAME
 )
 from lib.identify_camera_files_to_process import recursively_list_all_video_files_in_folder, filter_unprocessed_file_paths
 from lib.analyse_camera_file import create_yolo_model, detect_objects_in_video_file
@@ -20,53 +22,145 @@ import json
 setup_logging()
 
 
-def get_file_size_gb(file_path):
-    """Get file size in GB."""
-    try:
-        return os.path.getsize(file_path) / (1024**3)
-    except OSError:
-        return 0.0
+def get_folder_from_file_path(file_path):
+    """Get the directory of a file path."""
+    return os.path.dirname(file_path)
 
-def get_file_info_with_metadata(file_path, detect_objects_filename):
+def is_camera_date_folder(folder_path):
+    """Check if a folder path ends with yyyy/mm/dd format."""
+    # Extract the last 3 parts of the path
+    parts = folder_path.replace('\\', '/').split('/')
+    if len(parts) < 3:
+        return False
+
+    year, month, day = parts[-3], parts[-2], parts[-1]
+
+    # Check if they match yyyy/mm/dd pattern
+    year_pattern = r'^\d{4}$'
+    month_day_pattern = r'^(0[1-9]|1[0-2])$'  # 01-12
+    day_pattern = r'^(0[1-9]|[12][0-9]|3[01])$'  # 01-31
+
+    return (re.match(year_pattern, year) and
+            re.match(month_day_pattern, month) and
+            re.match(day_pattern, day))
+
+def get_camera_folders_from_files(all_video_file_paths):
     """
-    Get file information including size, modification time, and detected objects.
-    Returns a dict with file_path, size_gb, mtime, and detected_objects (set).
+    Extract unique camera folders (yyyy/mm/dd format) from video file paths.
+    Returns a list of folder paths sorted in descending order (most recent first).
     """
+    folders = set()
+    for file_path in all_video_file_paths:
+        folder = get_folder_from_file_path(file_path)
+        if is_camera_date_folder(folder):
+            folders.add(folder)
+
+    # Sort descending (most recent first) - relies on yyyy/mm/dd string sorting
+    return sorted(list(folders), reverse=True)
+
+def calculate_folder_size(folder_path):
+    """Calculate total size of all files in a folder in GB."""
+    total_size = 0
     try:
-        stat_info = os.stat(file_path)
-        size_gb = stat_info.st_size / (1024**3)
-        mtime = stat_info.st_mtime
-
-        # Load detected objects from JSON
-        folder_path = os.path.dirname(file_path)
-        file_name = os.path.basename(file_path)
-        detected_objects_file_path = os.path.join(folder_path, detect_objects_filename)
-        detected_objects = set()
-
-        if os.path.exists(detected_objects_file_path):
-            try:
-                with open(detected_objects_file_path, 'r') as f:
-                    detected_data = json.load(f)
-                    if file_name in detected_data:
-                        detected_objects = set(detected_data[file_name])
-            except (json.JSONDecodeError, KeyError):
-                pass
-
-        return {
-            'file_path': file_path,
-            'size_gb': size_gb,
-            'mtime': mtime,
-            'detected_objects': detected_objects
-        }
+        for entry in os.scandir(folder_path):
+            if entry.is_file(follow_symlinks=False):
+                try:
+                    total_size += entry.stat().st_size
+                except OSError:
+                    pass
     except OSError:
-        return None
+        pass
+    return total_size / (1024**3)  # Convert to GB
+
+def get_or_calculate_folder_size(folder_path, folder_size_filename):
+    """
+    Get folder size from cache file or calculate it.
+    Returns size in GB.
+    """
+    cache_file = os.path.join(folder_path, folder_size_filename)
+
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, 'r') as f:
+                return float(f.read().strip())
+        except (ValueError, OSError):
+            pass
+
+    # Calculate and cache
+    size_gb = calculate_folder_size(folder_path)
+    try:
+        with open(cache_file, 'w') as f:
+            f.write(f"{size_gb:.6f}")
+    except OSError:
+        log(f"Warning: Could not write cache file: {cache_file}")
+
+    return size_gb
+
+def update_folder_size_cache(folder_path, folder_size_filename):
+    """Recalculate and update the folder size cache file."""
+    size_gb = calculate_folder_size(folder_path)
+    cache_file = os.path.join(folder_path, folder_size_filename)
+    try:
+        with open(cache_file, 'w') as f:
+            f.write(f"{size_gb:.6f}")
+    except OSError:
+        log(f"Warning: Could not write cache file: {cache_file}")
+    return size_gb
+
+def get_video_files_in_folder(folder_path, video_file_extensions):
+    """Get all video files in a specific folder (not recursive)."""
+    video_files = []
+    try:
+        for entry in os.scandir(folder_path):
+            if entry.is_file() and entry.name.lower().endswith(video_file_extensions):
+                video_files.append(entry.path)
+    except OSError:
+        pass
+    return video_files
+
+def has_target_objects_in_video(file_path, detect_objects_filename, keep_videos_with_objects):
+    """Check if a video file has detected target objects."""
+    folder_path = os.path.dirname(file_path)
+    file_name = os.path.basename(file_path)
+    detected_objects_file = os.path.join(folder_path, detect_objects_filename)
+
+    if not os.path.exists(detected_objects_file):
+        return False
+
+    try:
+        with open(detected_objects_file, 'r') as f:
+            detected_data = json.load(f)
+            if file_name in detected_data:
+                detected_objects = set(detected_data[file_name])
+                return bool(detected_objects.intersection(keep_videos_with_objects))
+    except (json.JSONDecodeError, KeyError, OSError):
+        pass
+
+    return False
 
 def remove_file_and_log(file_path, reason, dry_run):
     """Remove a file with logging."""
     if os.path.exists(file_path):
         if not dry_run:
-            os.remove(file_path)
+            try:
+                os.remove(file_path)
+            except OSError as e:
+                log(f"ERROR: Could not remove file {file_path}: {e}")
+                return False
         log(f"[{reason}] Removed file: {file_path}")
+        return True
+    return False
+
+def remove_folder_and_log(folder_path, reason, dry_run):
+    """Remove an entire folder and all its contents with logging."""
+    if os.path.exists(folder_path):
+        if not dry_run:
+            try:
+                shutil.rmtree(folder_path)
+            except OSError as e:
+                log(f"ERROR: Could not remove folder {folder_path}: {e}")
+                return False
+        log(f"[{reason}] Removed folder and all contents: {folder_path}")
         return True
     return False
 
@@ -100,89 +194,109 @@ def process_new_files(yolo_model):
 def manage_disk_space(all_video_file_paths):
     """
     Step 2 & 3: Manage disk space by:
-    - Keeping recent files (up to RECENT_FILES_MAX_SIZE_GB), but removing non-target-object videos
-    - Keeping older files with target objects (up to HISTORICAL_FILES_MAX_SIZE_GB)
+    - Calculating folder sizes (caching results)
+    - Keeping recent folders (up to RECENT_FILES_MAX_SIZE_GB)
+    - Removing non-target videos from folders that exceed the first threshold
+    - Removing entire folders that exceed the second threshold
     """
     log("=" * 80)
-    log("STEP 2 & 3: Managing disk space")
+    log("STEP 2 & 3: Managing disk space (folder-based approach)")
     log("=" * 80)
 
-    # Gather file information
-    log("Gathering file information and metadata...")
-    file_info_list = []
-    for file_path in all_video_file_paths:
-        info = get_file_info_with_metadata(file_path, DETECT_OBJECTS_FILENAME)
-        if info:
-            file_info_list.append(info)
+    # Get all camera folders sorted by date (most recent first)
+    camera_folders = get_camera_folders_from_files(all_video_file_paths)
+    log(f"Found {len(camera_folders)} camera date folders")
 
-    # Sort by modification time (newest first)
-    file_info_list.sort(key=lambda x: x['mtime'], reverse=True)
-    log(f"Total files to evaluate: {len(file_info_list)}")
+    # Step 1: Calculate/retrieve folder sizes
+    log("Step 1: Calculating folder sizes...")
+    folder_sizes = {}
+    for idx, folder_path in enumerate(camera_folders, 1):
+        size_gb = get_or_calculate_folder_size(folder_path, FOLDER_SIZE_FILENAME)
+        folder_sizes[folder_path] = size_gb
+        if idx % 100 == 0:
+            log(f"  Processed {idx}/{len(camera_folders)} folders")
 
-    # Phase 1: Identify recent files (up to RECENT_FILES_MAX_SIZE_GB) - keep ALL of them
-    log(f"\nPhase 1: Identifying recent files (target: {RECENT_FILES_MAX_SIZE_GB} GB)")
-    recent_size_gb = 0.0
-    recent_index = 0
+    log(f"Completed calculating sizes for {len(camera_folders)} folders")
 
-    for idx, file_info in enumerate(file_info_list):
-        recent_size_gb += file_info['size_gb']
-        recent_index = idx + 1
+    # Step 2: Identify phase 1 folders (recent, below first threshold)
+    log(f"Step 2: Identifying Phase 1 folders (target: {RECENT_FILES_MAX_SIZE_GB} GB)")
+    cumulative_size = 0.0
+    phase1_end_index = 0
 
-        if recent_size_gb >= RECENT_FILES_MAX_SIZE_GB:
+    for idx, folder_path in enumerate(camera_folders):
+        cumulative_size += folder_sizes[folder_path]
+        if cumulative_size >= RECENT_FILES_MAX_SIZE_GB:
+            phase1_end_index = idx  # This folder exceeded threshold, it's NOT in phase 1
             break
+        phase1_end_index = idx + 1  # All folders processed are in phase 1
 
-    log(f"Recent set: {recent_index} files, {recent_size_gb:.2f} GB (all kept untouched)")
+    phase1_folders = camera_folders[:phase1_end_index]
+    phase1_size = sum(folder_sizes[f] for f in phase1_folders)
 
-    # Phase 2: Process historical files (files older than the recent set)
-    log(f"\nPhase 2: Processing historical files (remove files without target objects)")
-    historical_files = file_info_list[recent_index:]
-    log(f"Historical files to evaluate: {len(historical_files)}")
+    log(f"Phase 1 (recent, kept untouched): {len(phase1_folders)} folders, {phase1_size:.2f} GB")
 
-    # First pass: Remove files without target objects from historical set
-    historical_files_with_targets = []
-    historical_removed_no_target = 0
+    # Step 3: Process phase 2 folders (remove non-target videos)
+    log(f"Step 3: Processing Phase 2 folders (remove videos without target objects)")
+    phase2_start_index = phase1_end_index
+    dirty_folders = set()
+    removed_files_count = 0
 
-    for file_info in historical_files:
-        has_target_objects = bool(file_info['detected_objects'].intersection(KEEP_VIDEOS_WITH_OBJECTS))
+    for idx in range(phase2_start_index, len(camera_folders)):
+        folder_path = camera_folders[idx]
+        video_files = get_video_files_in_folder(folder_path, VIDEO_FILE_EXTENSIONS)
 
-        if has_target_objects:
-            historical_files_with_targets.append(file_info)
-        else:
-            if remove_file_and_log(file_info['file_path'], "HISTORICAL_NO_TARGET", DELETE_DRY_RUN):
-                historical_removed_no_target += 1
+        for video_file in video_files:
+            if not has_target_objects_in_video(video_file, DETECT_OBJECTS_FILENAME, KEEP_VIDEOS_WITH_OBJECTS):
+                if remove_file_and_log(video_file, "PHASE2_NO_TARGET", DELETE_DRY_RUN):
+                    removed_files_count += 1
+                    dirty_folders.add(folder_path)
 
-    log(f"Removed {historical_removed_no_target} historical files without target objects")
-    log(f"Remaining historical files with target objects: {len(historical_files_with_targets)}")
+    log(f"Removed {removed_files_count} videos without target objects from {len(dirty_folders)} folders")
 
-    # Phase 3: Cap historical files with target objects at HISTORICAL_FILES_MAX_SIZE_GB
-    log(f"\nPhase 3: Capping historical files at {HISTORICAL_FILES_MAX_SIZE_GB} GB")
-    historical_size_gb = 0.0
-    historical_kept = 0
-    historical_removed_over_limit = 0
+    # Step 4: Recalculate sizes for dirty folders
+    if dirty_folders:
+        log(f"\nStep 4: Recalculating sizes for {len(dirty_folders)} modified folders")
+        for folder_path in dirty_folders:
+            new_size = update_folder_size_cache(folder_path, FOLDER_SIZE_FILENAME)
+            folder_sizes[folder_path] = new_size
 
-    for file_info in historical_files_with_targets:
-        if historical_size_gb < HISTORICAL_FILES_MAX_SIZE_GB:
-            # Keep this file
-            historical_size_gb += file_info['size_gb']
-            historical_kept += 1
-        else:
-            # Remove this file - over the historical limit
-            if remove_file_and_log(file_info['file_path'], "HISTORICAL_OVER_LIMIT", DELETE_DRY_RUN):
-                historical_removed_over_limit += 1
+    # Step 5: Calculate cumulative size from phase 2 start to find where we exceed second threshold
+    log(f"Step 5: Identifying folders to remove (beyond {RECENT_FILES_MAX_SIZE_GB + HISTORICAL_FILES_MAX_SIZE_GB} GB)")
+    cumulative_from_phase2 = 0.0
+    phase2_end_index = phase2_start_index
 
-    log(f"Historical set after size cap: {historical_kept} files kept, {historical_size_gb:.2f} GB")
-    log(f"Removed {historical_removed_over_limit} files due to exceeding historical size limit")
+    for idx in range(phase2_start_index, len(camera_folders)):
+        cumulative_from_phase2 += folder_sizes[camera_folders[idx]]
+        if cumulative_from_phase2 >= HISTORICAL_FILES_MAX_SIZE_GB:
+            phase2_end_index = idx  # Keep up to this folder
+            break
+        phase2_end_index = idx + 1
+
+    phase2_folders = camera_folders[phase2_start_index:phase2_end_index]
+    phase2_size = sum(folder_sizes[f] for f in phase2_folders)
+
+    log(f"Phase 2 (historical with targets): {len(phase2_folders)} folders, {phase2_size:.2f} GB")
+
+    # Step 6: Remove all remaining folders
+    folders_to_remove = camera_folders[phase2_end_index:]
+    log(f"Step 6: Removing {len(folders_to_remove)} folders beyond threshold")
+    removed_folders_count = 0
+
+    for folder_path in folders_to_remove:
+        if remove_folder_and_log(folder_path, "PHASE3_OVER_LIMIT", DELETE_DRY_RUN):
+            removed_folders_count += 1
+
+    log(f"Removed {removed_folders_count} entire folders")
 
     # Summary
     log("=" * 80)
     log("DISK SPACE MANAGEMENT SUMMARY")
     log("=" * 80)
-    log(f"Recent files (all kept): ~{recent_size_gb:.2f} GB (target: {RECENT_FILES_MAX_SIZE_GB} GB)")
-    log(f"Historical files (with target objects only): ~{historical_size_gb:.2f} GB (target: {HISTORICAL_FILES_MAX_SIZE_GB} GB)")
-    log(f"Total used: ~{recent_size_gb + historical_size_gb:.2f} GB")
-    log(f"Expected free space: ~{930 - recent_size_gb - historical_size_gb:.2f} GB "
-        f"(target buffer: {FREE_SPACE_BUFFER_GB} GB)")
-    log(f"Total files removed: {historical_removed_no_target + historical_removed_over_limit}")
+    log(f"Phase 1 (recent, all kept): {len(phase1_folders)} folders, {phase1_size:.2f} GB (target: {RECENT_FILES_MAX_SIZE_GB} GB)")
+    log(f"Phase 2 (historical with targets): {len(phase2_folders)} folders, {phase2_size:.2f} GB (target: {HISTORICAL_FILES_MAX_SIZE_GB} GB)")
+    log(f"Total kept: {len(phase1_folders) + len(phase2_folders)} folders, {phase1_size + phase2_size:.2f} GB")
+    log(f"Removed: {removed_files_count} individual files + {removed_folders_count} entire folders")
+    log(f"Expected free space increase: ~{sum(folder_sizes[f] for f in folders_to_remove):.2f} GB")
 
 def run_daily_workflow():
     """Main workflow to run daily."""

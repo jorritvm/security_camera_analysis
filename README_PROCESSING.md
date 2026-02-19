@@ -88,30 +88,47 @@ python main_cleanup.py
 
 ### 3. **main_daily_workflow.py** - Advanced Disk Space Management
 
-**Purpose**: Sophisticated daily workflow that manages disk space using a tiered retention strategy.
+**Purpose**: Sophisticated daily workflow that manages disk space using a folder-based tiered retention strategy.
 
-**Use Case**: Production systems that need to balance recent footage preservation with long-term storage of important events. Designed to run daily as a scheduled task.
+**Use Case**: Production systems that need to balance recent footage preservation with long-term storage of important events. Designed to run daily as a scheduled task. Efficiently manages disk space by treating entire camera date folders (yyyy/mm/dd) as units, accounting for all files (videos, JPG stills, metadata).
 
 **What it does**:
 
-**Phase 1 - Process New Files**:
+**Step 1 - Process New Files**:
 - Runs YOLO detection on all unprocessed videos
-- Creates JSON metadata and still images
+- Creates JSON metadata (`detected_objects.json`)
+- Saves still images for videos with detected persons (if enabled)
 
-**Phase 2 - Manage Recent Files** (Default: 500GB):
-- Identifies the most recent files up to `RECENT_FILES_MAX_SIZE_GB`
-- **Keeps ALL recent files** regardless of content (preserves recent history)
+**Step 2-6 - Folder-Based Disk Space Management**:
 
-**Phase 3 - Manage Historical Files** (Default: 400GB):
-- For older files beyond the "recent" set:
-  - Removes all videos without target objects
-  - Keeps videos with target objects up to `HISTORICAL_FILES_MAX_SIZE_GB`
-  - Removes oldest files with target objects if over the historical limit
+The workflow operates on camera date folders (yyyy/mm/dd format) rather than individual files:
+
+1. **Calculate Folder Sizes**: 
+   - Scans all camera folders and calculates total size of ALL files (mp4, jpg, json, etc.)
+   - Caches results in `this_folder_size.txt` for performance
+   - Only recalculates when folders are modified
+
+2. **Phase 1 - Recent Folders** (Default: 500GB):
+   - Identifies most recent folders (sorted by date) up to `RECENT_FILES_MAX_SIZE_GB`
+   - **Keeps ALL content** in these folders untouched (videos, stills, metadata)
+   - Preserves complete recent history regardless of content
+
+3. **Phase 2 - Historical Folders with Target Objects** (Default: 400GB):
+   - Starts from the folder that exceeded Phase 1 threshold
+   - Removes individual video files WITHOUT target objects (e.g., no "person" detected)
+   - Keeps JPG stills, metadata, and videos WITH target objects
+   - Continues until cumulative size reaches `HISTORICAL_FILES_MAX_SIZE_GB`
+
+4. **Phase 3 - Old Folders Complete Removal**:
+   - All folders beyond Phase 2 threshold are **completely deleted**
+   - Removes entire folder and ALL contents (videos, stills, metadata, cache files)
+   - Maximizes space recovery for oldest footage
 
 **Result**: 
 - ~500GB of recent footage (everything preserved)
-- ~400GB of older footage (only videos with people/target objects)
+- ~400GB of historical footage (only videos with target objects, plus their stills/metadata)
 - ~30GB free space buffer for incoming streams
+- Efficient caching minimizes folder scanning overhead
 
 **Usage**:
 ```bash
@@ -122,17 +139,23 @@ python main_daily_workflow.py
 **Configuration**: Edit `config.py` to set:
 ```python
 # Disk space management
-RECENT_FILES_MAX_SIZE_GB = 500      # Recent files to keep (all)
-HISTORICAL_FILES_MAX_SIZE_GB = 400  # Older files with target objects
-FREE_SPACE_BUFFER_GB = 30           # Expected free space
+RECENT_FILES_MAX_SIZE_GB = 500      # Recent folders to keep (all content)
+HISTORICAL_FILES_MAX_SIZE_GB = 400  # Historical folders with target objects
+FREE_SPACE_BUFFER_GB = 30           # Expected free space remaining
+FOLDER_SIZE_FILENAME = "this_folder_size.txt"  # Cache file for folder sizes
 
 # Also configure:
 ROOT_CAMERA_FOLDER_PATH = "path/to/videos"
-KEEP_VIDEOS_WITH_OBJECTS = {"person"}
-DELETE_DRY_RUN = False  # Set to True for testing
+KEEP_VIDEOS_WITH_OBJECTS = {"person"}  # Objects to preserve in Phase 2
+DELETE_DRY_RUN = False  # Set to True for testing without deletion
 ```
 
 **Scheduling**: Set up as a daily cron job or Windows Task Scheduler task.
+
+**Performance Notes**:
+- Folder size caching significantly improves performance on large archives
+- Only modified folders have their sizes recalculated
+- Date-based folder sorting relies on yyyy/mm/dd format for correct chronological order
 
 ---
 

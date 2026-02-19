@@ -134,8 +134,12 @@ def perform_video_file_analysis(video_file_path, model, frame_skip, threshold, s
         x1, y1, x2, y2 = best_person_box.astype(int)
         cv2.rectangle(best_person_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # green box
         save_path = os.path.join(save_stills_dir, f"{os.path.basename(video_file_path)}_boxed.jpg")
-        cv2.imwrite(save_path, best_person_frame)
-        log(f"Saved best person detection frame to {save_path}")
+        # Attempt to write the image and check for success
+        success = cv2.imwrite(save_path, best_person_frame)
+        if success:
+            log(f"Saved best person detection frame to {save_path}")
+        else:
+            log(f"ERROR: Failed to save best person detection frame to {save_path}. Check permissions and disk space.")
 
     return detected_objects
 
