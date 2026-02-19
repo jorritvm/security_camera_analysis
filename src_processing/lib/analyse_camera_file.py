@@ -73,7 +73,7 @@ def convert_video_file_to_lower_resolution(input_file_path, output_folder_path, 
     file_name = os.path.basename(input_file_path)
     output_file_path = os.path.join(output_folder_path, file_name)
 
-    log(f"Converting video file to lower resolution: {input_file_path} → {output_file_path}")
+    log(f"Converting video file to lower resolution: {input_file_path} -> {output_file_path}")
     # input file path must resolve to an absolute path, no .. allowed
     input_file_path = os.path.abspath(input_file_path)
     output_file_path = os.path.abspath(output_file_path)
