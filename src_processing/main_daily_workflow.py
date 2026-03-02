@@ -8,6 +8,7 @@ This is designed to run daily as a batch job.
 import os
 import re
 import shutil
+import time
 from config import (
     ROOT_CAMERA_FOLDER_PATH, FORCE_REEVALUATION, VIDEO_FILE_EXTENSIONS, DETECT_OBJECTS_FILENAME,
     YOLO_MODEL_NAME, FRAME_SKIP, YOLO_THRESHOLD, TEMP_FOLDER, CONVERTED_VIDEO_SIZE,
@@ -75,24 +76,23 @@ def get_or_calculate_folder_size(folder_path, folder_size_filename):
     Get folder size from cache file or calculate it.
     Returns size in GB.
     """
-    cache_file = os.path.join(folder_path, folder_size_filename)
+    cache_file_path = os.path.join(folder_path, folder_size_filename)
+    use_cache = False
+    if os.path.exists(cache_file_path):
+        cache_mtime = os.path.getmtime(cache_file_path)
+        cache_age_hours = (time.time() - cache_mtime) / 3600.0
+        # Only use cache if it is less than 35 hours old
+        if cache_age_hours < 35:
+            use_cache = True
+    if use_cache:
+        with open(cache_file_path, "r") as f:
+            folder_size = float(f.read())
+    else:
+        folder_size = calculate_folder_size(folder_path)
+        with open(cache_file_path, "w") as f:
+            f.write(f"{folder_size:.6f}")
 
-    if os.path.exists(cache_file):
-        try:
-            with open(cache_file, 'r') as f:
-                return float(f.read().strip())
-        except (ValueError, OSError):
-            pass
-
-    # Calculate and cache
-    size_gb = calculate_folder_size(folder_path)
-    try:
-        with open(cache_file, 'w') as f:
-            f.write(f"{size_gb:.6f}")
-    except OSError:
-        log(f"Warning: Could not write cache file: {cache_file}")
-
-    return size_gb
+    return folder_size
 
 def update_folder_size_cache(folder_path, folder_size_filename):
     """Recalculate and update the folder size cache file."""
@@ -328,7 +328,3 @@ if __name__ == "__main__":
         timestamp_log_file=True
     )
     run_daily_workflow()
-
-
-
-
